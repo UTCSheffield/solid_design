@@ -20,8 +20,9 @@ with cols[2]:
 with cols[3]:
     height = st.slider("Height", 0.5, 10.0, value=1.0)
 
-# shape = cube(length, depth, height)
-shape = squircle([length, depth], 2).linear_extrude(height, center=True).translate(0, 0, height/2)
+shape = cube(length, depth, height)
+#shape = squircle([length, depth], 2).linear_extrude(height, center=True).translate(0, 0, height/2)
+
 shape -= text(text=name).linear_extrude(height
                                         ,center=True).translate(5, 1, height)
 shape -= cylinder(3,1,height,True).translate(2, depth-4, 0)
