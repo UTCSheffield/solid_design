@@ -29,7 +29,7 @@ file_path='squirrel.stl'
 with open("app.stl", "r") as file:
     file_path='app.stl'
     
-st.subheader("Look: a flexi squirrel!")
+st.subheader("STL viewer")
 cols = st.columns(5)
 with cols[0]:
     color = st.color_picker("Pick a color", "#FF9900", key='color_file')
@@ -67,4 +67,4 @@ stl_from_file(  file_path=file_path,
                 max_view_distance=max_view_distance,
                 key='example1')
 
-file_input = st.file_uploader("Or upload a STL file ", type=["stl"])
+st.download_button("Download STL", data=open("app.stl", "rb"), file_name="app.stl", mime="application/octet-stream")
