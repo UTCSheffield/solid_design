@@ -27,7 +27,7 @@ shape = cube(length, depth, height)
 
 shape -= text(text=name).linear_extrude(height
                                         ,center=True).translate(5, 1, height)
-shape -= cylinder(h=height*3, r=1).translate(2, depth-4, 0-height)
+shape -= cylinder(h=height*3, r=1).translate(4, depth-4, 0-height)
 
 try:
     shape.save_as_stl()
