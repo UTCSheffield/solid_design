@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_stl import stl_from_file, stl_from_text
 from solid2 import *
-from solid2.extensions.bosl2 import squircle
+#from solid2.extensions.bosl2 import squircle
 
 
 st.set_page_config(layout="wide")
@@ -21,11 +21,13 @@ with cols[3]:
     height = st.slider("Height", 0.5, 10.0, value=1.0)
 
 shape = cube(length, depth, height)
+
+#shape = cube(length, depth, height, center=True).translate(0, 0, height/2)
 #shape = squircle([length, depth], 2).linear_extrude(height, center=True).translate(0, 0, height/2)
 
 shape -= text(text=name).linear_extrude(height
                                         ,center=True).translate(5, 1, height)
-shape -= cylinder(3,1,height,True).translate(2, depth-4, 0)
+shape -= cylinder(h=height*3, r=1).translate(2, depth-4, 0-height)
 
 try:
     shape.save_as_stl()
