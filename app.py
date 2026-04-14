@@ -20,6 +20,8 @@ with cols[2]:
 with cols[3]:
     height = st.slider("Height", 0.5, 10.0, value=1.0)
 
+distance_from_corner = 3
+
 shape = cube(length, depth, height)
 
 #shape = cube(length, depth, height, center=True).translate(0, 0, height/2)
@@ -27,7 +29,7 @@ shape = cube(length, depth, height)
 
 shape -= text(text=name).linear_extrude(height
                                         ,center=True).translate(5, 1, height)
-shape -= cylinder(h=height*3, r=1).translate(4, depth-4, 0-height)
+shape -= cylinder(h=height*3, r=1).translate(distance_from_corner, depth-distance_from_corner, 0-height)
 
 try:
     shape.save_as_stl()
