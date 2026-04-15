@@ -105,7 +105,7 @@ with cols[3]:
 with cols[4]:
     height = st.slider("Height", min_value=50, max_value=1000, value=500, key='height_file')
 
-stl_from_file(  file_path=file_path, 
+stl_from_file(  file_path=st.session_state.stl_file, 
                 color=color,
                 material=material,
                 auto_rotate=auto_rotate,
