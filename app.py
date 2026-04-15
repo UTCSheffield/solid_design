@@ -54,7 +54,6 @@ shape -= cylinder(h=height*3, r=1).translate(distance_from_corner, depth-distanc
 try:
     shape.save_as_stl(st.session_state.stl_file)
 
-        
     st.subheader("View controls!")
     cols = st.columns(5)
     with cols[0]:
@@ -82,7 +81,7 @@ try:
                     max_view_distance=1000,
                     key='example1')
 
-    st.download_button("Download STL", data=open(st.session_state.stl_file, "rb").read(), file_name="key_fob.stl", mime="application/octet-stream")
+    st.download_button("Download STL", data=open(st.session_state.stl_file, "rb").read(), file_name=f"key_fob_{name}    .stl", mime="application/octet-stream")
 
 except Exception as e:
     st.error(f"Error: {e}")
