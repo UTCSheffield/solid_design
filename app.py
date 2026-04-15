@@ -38,12 +38,9 @@ with cols[3]:
 # should different designs be done by different classes? 
 # Then use pydantic / dataclasses to generate the UI? 
 ## https://github.com/lukasmasuch/streamlit-pydantic
-<<<<<<< HEAD
 
 distance_from_corner = 3
 
-=======
->>>>>>> c8a14d2 (Refactor controls and improve UI elements for key fob application)
 
 shape = cube(length, depth, height)
 
@@ -57,7 +54,6 @@ shape -= cylinder(h=height*3, r=1).translate(distance_from_corner, depth-distanc
 try:
     shape.save_as_stl(st.session_state.stl_file)
 
-<<<<<<< HEAD
         
     st.subheader("View controls!")
     cols = st.columns(5)
@@ -86,38 +82,7 @@ try:
                     max_view_distance=1000,
                     key='example1')
 
-    st.download_button("Download STL", data=open(st.session_state.stl_file, "rb").read(), file_name=f"key_fob_{name}.stl", mime="application/octet-stream")
-=======
-with open("app.stl", "r") as file:
-    file_path='app.stl'
-    
-st.subheader("View controls!")
-cols = st.columns(5)
-with cols[0]:
-    color = st.color_picker("Pick a color", "#005EFF", key='color_file')
-with cols[1]:
-    material = st.selectbox("Select a material", ["material", "flat", "wireframe"], key='material_file')
-with cols[2]:
-    st.write('\n'); st.write('\n')
-    auto_rotate = st.toggle("Auto rotation", key='auto_rotate_file',value=True)
-with cols[3]:
-    opacity = st.slider("Opacity", min_value=0.0, max_value=1.0, value=1.0, key='opacity_file')
-with cols[4]:
-    height = st.slider("Height", min_value=50, max_value=1000, value=500, key='height_file')
-
-stl_from_file(  file_path=st.session_state.stl_file, 
-                color=color,
-                material=material,
-                auto_rotate=auto_rotate,
-                opacity=opacity,
-                height=height,
-                shininess=100,
-                cam_v_angle=60,
-                cam_h_angle=-90,
-                cam_distance=50,
-                max_view_distance=1000,
-                key='example1')
->>>>>>> c8a14d2 (Refactor controls and improve UI elements for key fob application)
+    st.download_button("Download STL", data=open(st.session_state.stl_file, "rb").read(), file_name="key_fob.stl", mime="application/octet-stream")
 
 except Exception as e:
     st.error(f"Error: {e}")
