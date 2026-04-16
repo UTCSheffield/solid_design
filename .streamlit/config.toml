@@ -1,0 +1,8 @@
+[client]
+# showErrorDetails = "none"
+
+[theme]
+primaryColor = "#F63366"
+
+[server]
+runOnSave = true
