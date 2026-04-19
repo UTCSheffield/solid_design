@@ -5,10 +5,10 @@ from urllib.error import URLError
 
 import streamlit as st
 from streamlit_stl import stl_from_file, stl_from_text
-from solid2 import *
 import tempfile
 from pathlib import Path
-from solid2.extensions.bosl2 import squircle
+
+from designs import DESIGNS
 
 if 'stl_file' not in st.session_state:
     tmp_file_path = str(Path(tempfile.gettempdir()) / str(uuid.uuid4()))+".stl" 
@@ -17,9 +17,10 @@ if 'stl_file' not in st.session_state:
 if not Path(st.session_state.stl_file).exists():
     Path(st.session_state.stl_file).touch()  # Create an empty file
     
-st.set_page_config(layout="wide")
+page_title = "UTC OLP - Custom 3D Stuff Designer"
+st.set_page_config(layout="wide", page_title=page_title, page_icon="🔑")
 
-st.title("Make a Key Fob")
+st.title(page_title)
 
 # https://3dfilamentprofiles.com/filaments/bambu-lab/pla
 BAMBU_COLORS_URL = "https://raw.githubusercontent.com/dadequate/bambu-lab-filament-colors/refs/heads/main/colors.json"
@@ -58,7 +59,7 @@ except FileNotFoundError:
     st.error(f"Missing school filament list: {SCHOOL_FILAMENTS_FILE}")
     owned_by_school = []
 except json.JSONDecodeError as e:
-    st.error(f"Invalid JSON in {SCHOOL_FILAMENTS_FILE.name}: {e}")
+    st.error(f"Invalid JSON in {SCHOOL_FILAMENTS_FILE}: {e}")
     owned_by_school = []
 
 color_lookup = {c["name"]: c["hex"] for c in all_filament_colors}
@@ -68,22 +69,15 @@ if not owned_color_options:
     st.warning("No matching school-owned colours found. Showing all Bambu colours for now.")
     owned_color_options = all_filament_colors
 
-
-cols = st.columns(5)
+cols = st.columns(2)
 with cols[0]:
-    name = st.text_input("What is your Name?", "Streamlit", key='name')
+    design = st.selectbox("Design", options=list(DESIGNS.keys()), key='design')
+
 with cols[1]:
-    length = st.slider("Length", 10, 100,
-                       value=int(round(len(name) * 7.5) + 7.5), key='length')
-with cols[2]:
-    depth = st.slider("Depth", 10, 100, value=12, key='depth')
-
-with cols[3]:
-    height = st.slider("Height", 0.5, 10.0, value=1.0, key='height')
-
-with cols[4]:
-    if not owned_color_options:
-        selected_colour_name = "PLA Basic — Blue"
+    if not owned_color_options and all_filament_colors:
+        selected_colour_name = all_filament_colors[0]["name"]
+    elif not owned_color_options and not all_filament_colors:
+        selected_colour_name = "Default"
     else:
         selected_colour_name = st.selectbox(
             "Filament",
@@ -91,31 +85,19 @@ with cols[4]:
             key='filament_name',
         )
 
-file_safe_selected_colour_name = selected_colour_name.replace(" — ", "-").replace(" ", "_")
-color = color_lookup[selected_colour_name]
+color = color_lookup.get(selected_colour_name, "#B0B0B0")
 
+selected_design = DESIGNS[design]
+params = selected_design.collect_params()
 
-# svg is usually just donee by import("file.svg") 
-# from solid2 import import_scad
-# svgshape = import_scad("file.svg")  # Not sure this will work
-# should different designs be done by different classes? 
-# Then use pydantic / dataclasses to generate the UI? 
-## https://github.com/lukasmasuch/streamlit-pydantic
+def file_safe_name(name: str) -> str:
+    return name.lower().replace(" — ", "-").replace(" ", "_")
 
-distance_from_corner = 3
+shape = selected_design.build_shape(params)
 
+name_for_file = getattr(params, "name", design)
 
-#shape = cube(length, depth, height)
-shape = squircle([length, depth], 0.9).linear_extrude(height, center=True).translate(length/2, depth/2, height/2)
-
-#shape = cube(length, depth, height, center=True).translate(0, 0, height/2)
-#shape = squircle([length, depth], 2).linear_extrude(height, center=True).translate(0, 0, height/2)
-
-shape -= text(text=name).linear_extrude(height
-                                        ,center=True).translate(5, 1, height)
-shape -= cylinder(h=height*3, r=1).translate(distance_from_corner, depth-distance_from_corner, 0-height)
-
-save_as_filename = f"key_fob_{name}_{file_safe_selected_colour_name}.stl"
+save_as_filename = f"OLP_{file_safe_name(design)}_{file_safe_name(str(name_for_file))}_{file_safe_name(selected_colour_name)}.stl"
 
 try:
     shape.save_as_stl(st.session_state.stl_file)
