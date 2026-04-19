@@ -1,8 +1,16 @@
 # solid_design
 
-Small Streamlit app for generating a simple 3D nameplate/tag and exporting it as an STL.
+
+Small Streamlit app for generating customizable 3D nameplates, tags, and fobs, and exporting them as STL files.
+
 
 The app uses `solidpython2` to build the geometry, relies on OpenSCAD for STL generation, and displays the result in the browser with `streamlit_stl`.
+
+## Design System
+
+The app supports multiple design types (e.g. squircle fob, square fob) using a dataclass-driven system in `designs.py`. Each design defines its own geometry and UI controls. You can easily add new designs by subclassing an existing design or creating a new one, then registering it in the `DESIGNS` dictionary.
+
+To experiment with new shapes or features, use `prototype.py` as a scratchpad for geometry prototyping before integrating your design into the main app.
 
 ## What It Does
 
@@ -12,15 +20,14 @@ The app uses `solidpython2` to build the geometry, relies on OpenSCAD for STL ge
 - Adds a small mounting hole
 - Generates an STL for preview and download
 
-## Project Files
 
-- `app.py` - Streamlit application and geometry generation logic
-- `school_filaments.json` - list of school-owned filament names used to filter selectable colours
+- `app.py` - Streamlit application and main UI logic
+- `designs.py` - Design classes and registry for different fob/tag types
+- `prototype.py` - Geometry prototyping and experimentation (not part of main app flow)
+- `school_filaments.json` - List of school-owned filament names used to filter selectable colours
 - `requirements.txt` - Python dependencies
-- `packages.txt` - System dependency list for environments that install apt packages
-- `app.scad` - Generated OpenSCAD output
-- `app.stl.scad` - Generated SCAD source emitted by the model pipeline
-- `squirrel.stl` - Example STL asset in the repository
+- `packages.txt` - System dependency list for streamlit.app
+
 
 ## Requirements
 
@@ -54,19 +61,23 @@ streamlit run app.py
 
 Then open the local URL shown by Streamlit in your browser.
 
+
 ## Usage
 
-1. Enter the text to engrave.
-2. Adjust the dimensions with the sliders.
-3. Inspect the rendered STL in the browser.
-4. Download the generated `app.stl` file.
+1. Select a design type from the dropdown (e.g. Key Fob, Square Fob).
+2. Enter the text to engrave.
+3. Adjust the dimensions with the sliders.
+4. Inspect the rendered STL in the browser.
+5. Download the generated STL file.
+
 
 ## Notes
 
 - `packages.txt` lists `openscad`, which is required for STL generation.
 - `school_filaments.json` must contain names that exactly match entries in the Bambu colour catalogue.
 - If STL generation fails, the app falls back to showing generated SCAD output.
-- The default shape in `app.py` is currently a rectangular base. There is also a commented `squircle` variant available in the source.
+- The default shape is now selectable via the UI. You can add new shapes by editing `designs.py`.
+- Use `prototype.py` to quickly try out new geometry ideas before formalizing them as a new design class.
 
 ## License
 
