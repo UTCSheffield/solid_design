@@ -12,10 +12,11 @@ from solid2.extensions.bosl2 import squircle
 
 if 'stl_file' not in st.session_state:
     tmp_file_path = str(Path(tempfile.gettempdir()) / str(uuid.uuid4()))+".stl" 
-    Path(tmp_file_path).touch()  # Create an empty file
     st.session_state.stl_file = tmp_file_path
 
-
+if not Path(st.session_state.stl_file).exists():
+    Path(st.session_state.stl_file).touch()  # Create an empty file
+    
 st.set_page_config(layout="wide")
 
 st.title("Make a Key Fob")
@@ -82,16 +83,16 @@ with cols[3]:
 
 with cols[4]:
     if not owned_color_options:
-        st.error("No colours are available. Check network and school_filaments.json")
-        color = st.color_picker("Colour", "#2317CC", key='color_file')
-
+        selected_colour_name = "PLA Basic — Blue"
     else:
         selected_colour_name = st.selectbox(
             "Filament",
             options=[c["name"] for c in owned_color_options],
             key='filament_name',
         )
-        color = color_lookup[selected_colour_name]
+
+file_safe_selected_colour_name = selected_colour_name.replace(" — ", "-").replace(" ", "_")
+color = color_lookup[selected_colour_name]
 
 
 # svg is usually just donee by import("file.svg") 
@@ -114,10 +115,10 @@ shape -= text(text=name).linear_extrude(height
                                         ,center=True).translate(5, 1, height)
 shape -= cylinder(h=height*3, r=1).translate(distance_from_corner, depth-distance_from_corner, 0-height)
 
+save_as_filename = f"key_fob_{name}_{file_safe_selected_colour_name}.stl"
+
 try:
     shape.save_as_stl(st.session_state.stl_file)
-
-
     
     stl_from_file(  file_path=st.session_state.stl_file, 
                     color=color,
@@ -132,7 +133,10 @@ try:
                     max_view_distance=1000,
                     key='example1')
 
-    st.download_button("Download STL", data=open(st.session_state.stl_file, "rb").read(), file_name=f"key_fob_{name}    .stl", mime="application/octet-stream")
+    st.download_button("Download STL",
+                       data=open(st.session_state.stl_file, "rb").read(),
+                       file_name=save_as_filename,
+                       mime="application/octet-stream")
 
 except Exception as e:
     st.error(f"Error: {e}")
