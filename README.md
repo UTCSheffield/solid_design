@@ -15,6 +15,7 @@ The app uses `solidpython2` to build the geometry, relies on OpenSCAD for STL ge
 ## Project Files
 
 - `app.py` - Streamlit application and geometry generation logic
+- `school_filaments.json` - list of school-owned filament names used to filter selectable colours
 - `requirements.txt` - Python dependencies
 - `packages.txt` - System dependency list for environments that install apt packages
 - `app.scad` - Generated OpenSCAD output
@@ -63,6 +64,7 @@ Then open the local URL shown by Streamlit in your browser.
 ## Notes
 
 - `packages.txt` lists `openscad`, which is required for STL generation.
+- `school_filaments.json` must contain names that exactly match entries in the Bambu colour catalogue.
 - If STL generation fails, the app falls back to showing generated SCAD output.
 - The default shape in `app.py` is currently a rectangular base. There is also a commented `squircle` variant available in the source.
 
