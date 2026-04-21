@@ -12,6 +12,8 @@ The app supports multiple design types (e.g. squircle fob, square fob) using a d
 
 To experiment with new shapes or features, use `prototype.py` as a scratchpad for geometry prototyping before integrating your design into the main app.
 
+For layout work, `geometry.py` includes helpers to render a SolidPython shape to STL through OpenSCAD, measure its true bounding box back from the mesh, and compute the translate vector needed to center it.
+
 ## What It Does
 
 - Takes a name as input
@@ -23,6 +25,7 @@ To experiment with new shapes or features, use `prototype.py` as a scratchpad fo
 
 - `app.py` - Streamlit application and main UI logic
 - `designs.py` - Design classes and registry for different fob/tag types
+- `geometry.py` - STL-based bounding-box and centering helpers for SolidPython shapes
 - `prototype.py` - Geometry prototyping and experimentation (not part of main app flow)
 - `school_filaments.json` - List of school-owned filament names used to filter selectable colours
 - `requirements.txt` - Python dependencies
@@ -78,6 +81,7 @@ Then open the local URL shown by Streamlit in your browser.
 - If STL generation fails, the app falls back to showing generated SCAD output.
 - The default shape is now selectable via the UI. You can add new shapes by editing `designs.py`.
 - Use `prototype.py` to quickly try out new geometry ideas before formalizing them as a new design class.
+- Call `calculate_shape_bounding_box(shape)` to get `min_corner`, `max_corner`, `size`, `center`, and `translation_to_center()`.
 
 ## License
 
