@@ -113,10 +113,10 @@ class KeyFobDesign(BaseDesign[KeyFobParams]):
             label="Height",
             key="height",
             control_type="slider",
-            min_value=0.5,
+            min_value=1,
             max_value=10.0,
             step=0.1,
-            default=1.0,
+            default=3.0,
         ),
     ]
 
@@ -130,7 +130,7 @@ class KeyFobDesign(BaseDesign[KeyFobParams]):
         distance_from_corner = 3
 
         shape -= text(text=params.name).linear_extrude(params.height, center=True).translate(5, 1, params.height)
-        shape -= cylinder(h=params.height * 3, r=1).translate(
+        shape -= cylinder(h=params.height * 3, r=2).translate(
             distance_from_corner,
             params.depth - distance_from_corner,
             0 - params.height,
@@ -148,7 +148,7 @@ class SquareFobDesign(KeyFobDesign):
         distance_from_corner = 3
 
         shape -= text(text=params.name).linear_extrude(params.height, center=True).translate(5, 1, params.height)
-        shape -= cylinder(h=params.height * 3, r=1).translate(
+        shape -= cylinder(h=params.height * 3, r=2).translate(
             distance_from_corner,
             params.depth - distance_from_corner,
             0 - params.height,
