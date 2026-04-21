@@ -113,7 +113,7 @@ class KeyFobDesign(BaseDesign[KeyFobParams]):
             label="Height",
             key="height",
             control_type="slider",
-            min_value=1,
+            min_value=1.0,
             max_value=10.0,
             step=0.1,
             default=3.0,
