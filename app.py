@@ -10,13 +10,15 @@ from pathlib import Path
 
 from designs import DESIGNS
 
+# Ensure we have a temporary STL file to work with in the session state
 if 'stl_file' not in st.session_state:
     tmp_file_path = str(Path(tempfile.gettempdir()) / str(uuid.uuid4()))+".stl" 
     st.session_state.stl_file = tmp_file_path
 
+# Create an empty STL file if it doesn't exist
 if not Path(st.session_state.stl_file).exists():
     Path(st.session_state.stl_file).touch()  # Create an empty file
-    
+
 page_title = "UTC OLP - Custom 3D Stuff Designer"
 st.set_page_config(layout="wide", page_title=page_title, page_icon="🔑")
 
@@ -26,7 +28,7 @@ st.title(page_title)
 BAMBU_COLORS_URL = "https://raw.githubusercontent.com/dadequate/bambu-lab-filament-colors/refs/heads/main/colors.json"
 SCHOOL_FILAMENTS_FILE = "school_filaments.json"
 
-
+# Load filament color data with caching to avoid repeated network requests
 @st.cache_data(ttl=60 * 60 * 24, show_spinner=False)
 def load_bambu_filament_colors():
     with urlopen(BAMBU_COLORS_URL, timeout=10) as response:
@@ -41,11 +43,11 @@ def load_bambu_filament_colors():
         if c.get("name") and c.get("hex")
     ]
 
+# Load school-owned filament colors from a local JSON file
 def load_school_owned_filaments(file_path: str):
     with open(file_path, "r", encoding="utf-8") as f:
         payload = json.load(f)
     return payload.get("owned_filaments", [])
-
 
 try:
     all_filament_colors = load_bambu_filament_colors()
@@ -62,6 +64,7 @@ except json.JSONDecodeError as e:
     st.error(f"Invalid JSON in {SCHOOL_FILAMENTS_FILE}: {e}")
     owned_by_school = []
 
+# Create a lookup of color names to hex values for easy access when rendering the color selection dropdown
 color_lookup = {c["name"]: c["hex"] for c in all_filament_colors}
 owned_color_options = [{"name": name, "hex": color_lookup[name]} for name in owned_by_school if name in color_lookup]
 
@@ -69,6 +72,7 @@ if not owned_color_options:
     st.warning("No matching school-owned colours found. Showing all Bambu colours for now.")
     owned_color_options = all_filament_colors
 
+# UI for selecting the design and filament color
 cols = st.columns(2)
 with cols[0]:
     design = st.selectbox("Design", options=list(DESIGNS.keys()), key='design')
@@ -93,12 +97,11 @@ params = selected_design.collect_params()
 def file_safe_name(name: str) -> str:
     return name.lower().replace(" — ", "-").replace(" ", "_")
 
-
-
 name_for_file = getattr(params, "name", design)
 
 save_as_filename = f"OLP_{file_safe_name(design)}_{file_safe_name(str(name_for_file))}_{file_safe_name(selected_colour_name)}.stl"
 
+# Build the shape, save it as an STL file, and render it in the Streamlit app with a download button
 try:
     shape = selected_design.build_shape(params)
 

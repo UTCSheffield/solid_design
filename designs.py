@@ -130,6 +130,7 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
             control_type="slider",
             min_value=1.0,
             max_value=10.0,
+            step=0.1,
             default=2.5,
         ),
         ControlSpec(
