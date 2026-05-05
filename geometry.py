@@ -37,6 +37,9 @@ class BoundingBox:
             for axis_enabled, coordinate in zip(axes, self.center, strict=True)
         )
 
+    def translation_to_zero(self) -> tuple[float, float, float]:
+        return tuple(-coordinate for coordinate in self.min_corner)
+
 
 def calculate_shape_bounding_box(
     shape: Any,
