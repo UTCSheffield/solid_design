@@ -94,70 +94,8 @@ class KeyFobParamsLogan:
     buffer: float
     font: str = "Liberation Mono"
 
-class KeyFobDesign(BaseDesign[KeyFobParams]):
-    name = "Key Fob"
-    params_type = KeyFobParams
 
-    controls = [
-        ControlSpec(
-            field_name="name",
-            label="What is your Name?",
-            key="name",
-            control_type="text_input",
-            default="Streamlit",
-        ),
-        ControlSpec(
-            field_name="length",
-            label="Length",
-            key="length",
-            control_type="slider",
-            min_value=10,
-            max_value=100,
-            default=30,
-            default_factory=lambda values: int(round(len(values.get("name", "")) * 7.5) + 7.5),
-        ),
-        ControlSpec(
-            field_name="depth",
-            label="Depth",
-            key="depth",
-            control_type="slider",
-            min_value=10,
-            max_value=100,
-            default=12,
-        ),
-        ControlSpec(
-            field_name="height",
-            label="Height",
-            key="height",
-            control_type="slider",
-            min_value=1.0,
-            max_value=10.0,
-            step=0.1,
-            default=3.0,
-        ),
-    ]
-
-    def build_shape(self, params: KeyFobParams):
-        shape = (
-            squircle([params.length, params.depth], 0.8)
-            .linear_extrude(params.height, center=True)
-            .translate(params.length / 2, params.depth / 2, params.height / 2)
-        )
-
-        distance_from_corner = 3
-
-        shape -= text(text=params.name).linear_extrude(params.height, center=True).translate(5, 1, params.height)
-        shape -= cylinder(h=params.height * 3, r=2).translate(
-            distance_from_corner,
-            params.depth - distance_from_corner,
-            0 - params.height,
-        )
-
-        return shape
-
-
-
-class KeyFobDesignBuffer(BaseDesign[KeyFobParamsLogan]):
+class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
     name = "Key Fob Logan"
     params_type = KeyFobParamsLogan
 
@@ -207,7 +145,7 @@ class KeyFobDesignBuffer(BaseDesign[KeyFobParamsLogan]):
 
     ]
 
-    def build_shape(self, params: KeyFobParamsLogan):
+    def build_text_shape(self, params: KeyFobParamsLogan):
         # Create the text shape, extrude it
         textshape = text(text=params.name, font=params.font).linear_extrude(1)
 
@@ -224,7 +162,12 @@ class KeyFobDesignBuffer(BaseDesign[KeyFobParamsLogan]):
         textshape = text(text=params.name, font=params.font).translate(*bounds.translation_to_zero())
         textshape = textshape.scale(scale_factor).linear_extrude(params.height)
         
-        # Calculate the new depth of the shape based on the scaled text size and the buffer
+        return textshape, bounds, scale_factor
+    
+    def build_shape(self, params: KeyFobParamsLogan):
+
+        textshape, bounds, scale_factor = self.build_text_shape(params)
+
         depth = (bounds.size[1] * scale_factor) + params.buffer * 2
 
         # Create the base shape as a cube with the calculated dimensions
@@ -243,25 +186,32 @@ class KeyFobDesignBuffer(BaseDesign[KeyFobParamsLogan]):
 
         return shape
 
-class SquareFobDesign(KeyFobDesign):
-    name = "Square Fob"
+class RoundedFobDesign(LoganKeyFobDesign):
+    name = "Rounded Fob"
 
-    def build_shape(self, params: KeyFobParams):
-        shape = cube([params.length, params.depth, params.height])
+    def build_shape(self, params: KeyFobParamsLogan):
+        textshape, bounds, scale_factor = self.build_text_shape(params)
 
-        distance_from_corner = 3
+        # Calculate the new depth of the shape based on the scaled text size and the buffer
+        depth = (bounds.size[1] * scale_factor) + params.buffer * 2
 
-        shape -= text(text=params.name).linear_extrude(params.height, center=True).translate(5, 1, params.height)
-        shape -= cylinder(h=params.height * 3, r=2).translate(
-            distance_from_corner,
-            params.depth - distance_from_corner,
-            0 - params.height,
+        # Create the base shape as a cube with the calculated dimensions
+        shape = squircle([params.length, depth], 0.8).forward(depth / 2).right(params.length / 2).linear_extrude(params.height)
+        
+        # move the text up by half the thickness and right by 2 buffers and forward by the buffer, then cut it out of the base shape
+        shape -= textshape.up(params.height/2).right(params.buffer*2).forward(params.buffer)
+
+        #  then translating the hole into the top left corner
+        shape -= (
+            cylinder(h=params.height * 3, r=1.5, _fn=16)
+            .right(params.buffer)
+            .forward(depth - params.buffer)
+            .down(params.height)
         )
 
         return shape
 
 DESIGNS: dict[str, BaseDesign[Any]] = {
-    KeyFobDesign.name: KeyFobDesign(),
-    SquareFobDesign.name: SquareFobDesign(),
-    KeyFobDesignBuffer.name: KeyFobDesignBuffer(),  
+    LoganKeyFobDesign.name: LoganKeyFobDesign(),  
+    RoundedFobDesign.name: RoundedFobDesign(),
 }

@@ -93,13 +93,15 @@ params = selected_design.collect_params()
 def file_safe_name(name: str) -> str:
     return name.lower().replace(" — ", "-").replace(" ", "_")
 
-shape = selected_design.build_shape(params)
+
 
 name_for_file = getattr(params, "name", design)
 
 save_as_filename = f"OLP_{file_safe_name(design)}_{file_safe_name(str(name_for_file))}_{file_safe_name(selected_colour_name)}.stl"
 
 try:
+    shape = selected_design.build_shape(params)
+
     shape.save_as_stl(st.session_state.stl_file)
     
     stl_from_file(  file_path=st.session_state.stl_file, 
