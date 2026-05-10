@@ -21,6 +21,8 @@ from geometry import BoundingBox, measure_shape
 
 TParams = TypeVar("TParams")
 
+LEGACY_FONT_OPTIONS = ["Liberation Mono", "Arial", "Times New Roman"]
+
 
 @dataclass(frozen=True)
 class ControlSpec:
@@ -37,8 +39,7 @@ class ControlSpec:
 
 @st.cache_data(show_spinner=False)
 def available_font_options() -> list[str]:
-    fallback_fonts = [
-        "Liberation Mono",
+    fallback_fonts = LEGACY_FONT_OPTIONS + [
         "Liberation Sans",
         "DejaVu Sans",
         "Noto Sans",
@@ -64,7 +65,13 @@ def available_font_options() -> list[str]:
     if not font_names:
         return fallback_fonts
 
+    # Keep the original three options available for compatibility even when
+    # the host advertises a limited font set.
+    font_names.update(LEGACY_FONT_OPTIONS)
+
     preferred_order = [
+        "Arial",
+        "Times New Roman",
         "Liberation Mono",
         "Liberation Sans",
         "Liberation Serif",
@@ -112,6 +119,33 @@ def available_font_style_options(font_family: str) -> list[str]:
     ordered = [name for name in preferred_order if name in style_names]
     extras = sorted(name for name in style_names if name not in ordered)
     return ordered + extras
+
+
+@st.cache_data(show_spinner=False)
+def resolve_font_match(font_family: str) -> str | None:
+    if not font_family:
+        return None
+
+    try:
+        result = subprocess.run(
+            ["fc-match", "-f", "%{family}|%{style}", font_family],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+
+    resolved = result.stdout.strip()
+    if not resolved:
+        return None
+
+    family, _, style = resolved.partition("|")
+    family = family.strip()
+    style = style.strip()
+    if not family:
+        return None
+    return f"{family} ({style})" if style else family
 
 
 def compose_font_with_style(font_family: str, font_style: str) -> str:
@@ -164,6 +198,10 @@ def render_controls(control_specs: list[ControlSpec], columns: int = 4) -> dict[
                     index=options.index(current_value),
                     key=spec.key,
                 )
+                if spec.field_name == "font":
+                    resolved_font = resolve_font_match(str(value))
+                    if resolved_font:
+                        st.caption(f"Host font match: {resolved_font}")
             elif spec.control_type == "slider":
                 slider_kwargs: dict[str, Any] = {
                     "label": spec.label,
