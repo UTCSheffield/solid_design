@@ -6,7 +6,19 @@ from typing import Any, Callable, Dict, Generic, Literal, TypeVar
 
 import streamlit as st
 from solid2 import cube, cylinder, text
-from solid2.extensions.bosl2 import squircle
+from solid2.extensions.bosl2 import (
+    BACK,
+    BOTTOM,
+    FRONT,
+    LEFT,
+    RIGHT,
+    TOP,
+    cyl,
+    linear_extrude,
+    linear_sweep,
+    squircle,
+    text3d,
+)
 
 from geometry import BoundingBox, calculate_shape_bounding_box, center_shape_on_origin
 
@@ -154,16 +166,15 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
         ),
     ]
     
-    @st.cache_data
-    def calculate_text_bounding_box(_self, txt: str, font: str) -> BoundingBox:
-        
-        textshape = text(text=txt, font=font).linear_extrude(1)
 
+    def calculate_text_bounding_box(_self, txt: str, font: str) -> BoundingBox:
+        textshape = text(text=txt, font=font).linear_extrude(1)
 
         # Calculate the bounding box of the text shape
         bounds = calculate_shape_bounding_box(textshape)
         
         return textshape, bounds
+    
 
     def build_text_shape(self, params: KeyFobParamsLogan):
         # Create the text shape, extrude it
@@ -227,7 +238,67 @@ class RoundedFobDesign(LoganKeyFobDesign):
 
         return shape
 
+
+class RoundedBSOL2Design(LoganKeyFobDesign):
+    name = "BSOL Fob"
+    def calculate_text_bounding_box(self, txt: str, font: str):
+        probe = text3d(text=txt, font=font, size=10, h=1, anchor=BOTTOM+LEFT+FRONT)
+        bounds = calculate_shape_bounding_box(probe)
+        return bounds
+
+    def build_text_shape(self, params: KeyFobParamsLogan):
+        bounds = self.calculate_text_bounding_box(txt=params.name, font=params.font)
+        left_text_buffer = params.buffer * 2
+        right_text_buffer = params.buffer
+        new_text_length = params.length - left_text_buffer - right_text_buffer
+        scale_factor = new_text_length / bounds.size[0]
+
+        textshape = text3d(
+            text=params.name,
+            font=params.font,
+            size=10 * scale_factor,
+            h=params.height,
+            anchor=LEFT,
+        )
+
+        scaled_bounds = calculate_shape_bounding_box(textshape)
+        textshape = textshape.translate(scaled_bounds.translation_to_zero())
+        text_depth = scaled_bounds.size[1]
+
+        return textshape, text_depth
+
+    def build_shape(self, params: KeyFobParamsLogan):
+        textshape, text_depth = self.build_text_shape(params)
+        left_text_buffer = params.buffer * 2
+        right_text_buffer = params.buffer
+        top_bottom_buffer = params.buffer
+        depth = text_depth + top_bottom_buffer * 2
+
+        base = linear_sweep(
+            region=squircle([params.length, depth], 0.8, anchor=LEFT+FRONT),
+            height=params.height,
+            #anchor=BOTTOM + LEFT + FRONT,
+        )
+
+        hole = (
+            cyl(h=params.height * 3, r=1.5, _fn=16)
+            .position( LEFT + BACK)
+            .right(params.buffer)
+            .back(params.buffer)
+            .tag("remove")
+        )
+
+        text_cutout = (
+            textshape
+            .right(left_text_buffer)
+            .fwd(top_bottom_buffer)
+            .tag("remove")
+        )
+
+        return base(hole, text_cutout).diff()
+
 DESIGNS: dict[str, BaseDesign[Any]] = {
     LoganKeyFobDesign.name: LoganKeyFobDesign(),  
     RoundedFobDesign.name: RoundedFobDesign(),
+    RoundedBSOL2Design.name: RoundedBSOL2Design(),
 }

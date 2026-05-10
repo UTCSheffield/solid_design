@@ -1,5 +1,6 @@
 import uuid
 import json
+import hashlib
 from urllib.request import urlopen
 from urllib.error import URLError
 
@@ -102,12 +103,17 @@ name_for_file = getattr(params, "name", design)
 save_as_filename = f"OLP_{file_safe_name(design)}_{file_safe_name(str(name_for_file))}_{file_safe_name(selected_colour_name)}.stl"
 
 # Build the shape, save it as an STL file, and render it in the Streamlit app with a download button
+shape = None
 try:
     shape = selected_design.build_shape(params)
 
     shape.save_as_stl(st.session_state.stl_file)
+
+    with open(st.session_state.stl_file, "rb") as f:
+        stl_data = f.read()
+    stl_hash = hashlib.md5(stl_data).hexdigest()
     
-    stl_from_file(  file_path=st.session_state.stl_file, 
+    stl_from_text(  text=stl_data,
                     color=color,
                     material="material",
                     auto_rotate=True,
@@ -118,16 +124,17 @@ try:
                     cam_h_angle=-90,
                     cam_distance=50,
                     max_view_distance=1000,
-                    key='example1')
+                          key=f"example1_{stl_hash}")
 
     st.download_button("Download STL",
-                       data=open(st.session_state.stl_file, "rb").read(),
+                              data=stl_data,
                        file_name=save_as_filename,
                        mime="application/octet-stream")
 
 except Exception as e:
     st.error(f"Error: {e}")
-    scad_filename = st.session_state.stl_file.replace(".stl", ".scad")
-    shape.save_as_scad(scad_filename)
-    with open(scad_filename, "r") as file:
-        st.code(file.read(), language='scad')
+    if shape is not None:
+        scad_filename = st.session_state.stl_file.replace(".stl", ".scad")
+        shape.save_as_scad(scad_filename)
+        with open(scad_filename, "r") as file:
+            st.code(file.read(), language='scad')
