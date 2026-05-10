@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from tkinter import font
 from typing import Any, Callable, Dict, Generic, Literal, TypeVar
 
 import streamlit as st
