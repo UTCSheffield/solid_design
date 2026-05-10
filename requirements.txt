@@ -1,3 +1,4 @@
 solidpython2
 streamlit
 streamlit_stl
+trimesh
