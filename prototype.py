@@ -1,36 +1,40 @@
 from solid2.extensions.bosl2 import (
-    BACK, BOTTOM, FRONT, LEFT, RIGHT, TOP, cyl, text, text3d, linear_extrude,
-    cyl, linear_sweep, squircle, text3d
+    BACK,
+    BOTTOM,
+    FRONT,
+    LEFT,
+    cyl,
+    linear_sweep,
+    squircle,
+    text3d,
 )
 
 from designs import KeyFobParamsLogan
-from geometry import calculate_shape_bounding_box
+from geometry import measure_shape
 
 
 class MockDesign:
     def calculate_text_bounding_box(self, txt: str, font: str):
         probe = text3d(text=txt, font=font, size=10, h=1, anchor=BOTTOM+LEFT+FRONT)
-        bounds = calculate_shape_bounding_box(probe)
-        return bounds
+        return measure_shape(probe).bounds
 
     def build_text_shape(self, params: KeyFobParamsLogan):
         bounds = self.calculate_text_bounding_box(txt=params.name, font=params.font)
         left_text_buffer = params.buffer * 2
         right_text_buffer = params.buffer
         new_text_length = params.length - left_text_buffer - right_text_buffer
-        scale_factor = new_text_length / bounds.size[0]
-
-        text_shape = text3d(
+        measured_text = measure_shape(
+            text3d(
             text=params.name,
             font=params.font,
-            size=10 * scale_factor,
+            size=10,
             h=params.height,
             anchor=LEFT,
         )
+        ).resize_to(x=new_text_length)
 
-        scaled_bounds = calculate_shape_bounding_box(text_shape)
-        text_shape = text_shape.translate(scaled_bounds.translation_to_zero())
-        text_depth = scaled_bounds.size[1]
+        text_shape = measured_text.position(BOTTOM + LEFT + FRONT)
+        text_depth = measured_text.bounds.size[1]
 
         return text_shape, text_depth
 

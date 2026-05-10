@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import ast
 from dataclasses import dataclass
 from math import inf
 from pathlib import Path
 from struct import Struct, error as StructError
 from tempfile import TemporaryDirectory
 from typing import Any
+
+from solid2 import import_stl
+from solid2.extensions.bosl2 import CENTER, UP, attachable
 
 
 _BINARY_FACET = Struct("<12fH")
@@ -40,6 +44,71 @@ class BoundingBox:
     def translation_to_zero(self) -> tuple[float, float, float]:
         return tuple(-coordinate for coordinate in self.min_corner)
 
+    def anchor(self, direction: Any) -> tuple[float, float, float]:
+        direction_vector = _coerce_direction_vector(direction)
+        return tuple(
+            center + axis * size / 2
+            for center, axis, size in zip(self.center, direction_vector, self.size, strict=True)
+        )
+
+    def translation_to_anchor(self, anchor: Any) -> tuple[float, float, float]:
+        return tuple(-coordinate for coordinate in self.anchor(anchor))
+
+
+@dataclass(frozen=True)
+class MeasuredShape:
+    shape: Any
+    bounds: BoundingBox
+
+    def as_attachable(
+        self,
+        anchor: Any = CENTER,
+        spin: float | int = 0,
+        orient: Any = UP,
+    ) -> Any:
+        centered_shape = self.shape.translate(self.bounds.translation_to_center())
+        return attachable(
+            anchor=anchor,
+            spin=spin,
+            orient=orient,
+            size=list(self.bounds.size),
+        )(centered_shape)
+
+    def position(self, at: Any) -> Any:
+        return self.shape.translate(self.bounds.translation_to_anchor(at))
+
+    def scaled(self, sx: float, sy: float = 1.0, sz: float = 1.0) -> MeasuredShape:
+        scales = (sx, sy, sz)
+        scaled_shape = self.shape.scale(list(scales))
+
+        scaled_mins: list[float] = []
+        scaled_maxes: list[float] = []
+        for lower, upper, scale in zip(self.bounds.min_corner, self.bounds.max_corner, scales, strict=True):
+            lower_scaled = lower * scale
+            upper_scaled = upper * scale
+            scaled_mins.append(min(lower_scaled, upper_scaled))
+            scaled_maxes.append(max(lower_scaled, upper_scaled))
+
+        return MeasuredShape(
+            shape=scaled_shape,
+            bounds=BoundingBox(min_corner=tuple(scaled_mins), max_corner=tuple(scaled_maxes)),
+        )
+
+    def resize_to(
+        self,
+        *,
+        x: float | None = None,
+        y: float | None = None,
+        z: float | None = None,
+    ) -> MeasuredShape:
+        size_x, size_y, size_z = self.bounds.size
+
+        sx = x / size_x if x is not None else 1.0
+        sy = y / size_y if y is not None else 1.0
+        sz = z / size_z if z is not None else 1.0
+
+        return self.scaled(sx=sx, sy=sy, sz=sz)
+
 
 def calculate_shape_bounding_box(
     shape: Any,
@@ -58,6 +127,14 @@ def calculate_shape_bounding_box(
         return measure_stl_bounding_box(target_path)
 
 
+def measure_shape(
+    shape: Any,
+    *,
+    stl_path: str | Path | None = None,
+) -> MeasuredShape:
+    return MeasuredShape(shape=shape, bounds=calculate_shape_bounding_box(shape, stl_path=stl_path))
+
+
 def measure_stl_bounding_box(stl_path: str | Path) -> BoundingBox:
     path = Path(stl_path)
     if not path.exists():
@@ -68,12 +145,75 @@ def measure_stl_bounding_box(stl_path: str | Path) -> BoundingBox:
     return _measure_ascii_stl(path)
 
 
+def measure_stl_as_shape(stl_path: str | Path) -> MeasuredShape:
+    path = Path(stl_path)
+    stl_shape = import_stl(file=str(path))
+    return MeasuredShape(shape=stl_shape, bounds=measure_stl_bounding_box(path))
+
+
 def center_shape_on_origin(
     shape: Any,
     axes: tuple[bool, bool, bool] = (True, True, True),
+    *,
+    anchor: Any = None,
 ) -> tuple[Any, BoundingBox]:
     bounds = calculate_shape_bounding_box(shape)
-    return shape.translate(*bounds.translation_to_center(axes)), bounds
+    if anchor is not None:
+        return shape.translate(bounds.translation_to_anchor(anchor)), bounds
+    return shape.translate(bounds.translation_to_center(axes)), bounds
+
+
+def _coerce_direction_vector(direction: Any) -> tuple[float, float, float]:
+    if isinstance(direction, tuple | list):
+        if len(direction) != 3:
+            raise ValueError(f"Anchor direction must have 3 components, got {len(direction)}")
+        return tuple(float(value) for value in direction)
+
+    direction_value = getattr(direction, "value", None)
+    if isinstance(direction_value, str):
+        return _parse_anchor_expression(direction_value)
+
+    raise TypeError(f"Unsupported anchor direction: {direction!r}")
+
+
+def _parse_anchor_expression(expression: str) -> tuple[float, float, float]:
+    axis_map: dict[str, tuple[float, float, float]] = {
+        "TOP": (0.0, 0.0, 1.0),
+        "BOTTOM": (0.0, 0.0, -1.0),
+        "LEFT": (-1.0, 0.0, 0.0),
+        "RIGHT": (1.0, 0.0, 0.0),
+        "FRONT": (0.0, -1.0, 0.0),
+        "BACK": (0.0, 1.0, 0.0),
+        "CENTER": (0.0, 0.0, 0.0),
+    }
+
+    parsed = ast.parse(expression, mode="eval")
+
+    def eval_node(node: ast.AST) -> tuple[float, float, float]:
+        if isinstance(node, ast.Expression):
+            return eval_node(node.body)
+
+        if isinstance(node, ast.Name):
+            if node.id not in axis_map:
+                raise ValueError(f"Unsupported anchor symbol: {node.id}")
+            return axis_map[node.id]
+
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add | ast.Sub):
+            left = eval_node(node.left)
+            right = eval_node(node.right)
+            if isinstance(node.op, ast.Add):
+                return tuple(a + b for a, b in zip(left, right, strict=True))
+            return tuple(a - b for a, b in zip(left, right, strict=True))
+
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub | ast.UAdd):
+            value = eval_node(node.operand)
+            if isinstance(node.op, ast.USub):
+                return tuple(-component for component in value)
+            return value
+
+        raise ValueError(f"Unsupported anchor expression: {expression!r}")
+
+    return tuple(float(value) for value in eval_node(parsed))
 
 
 def _is_binary_stl(path: Path) -> bool:

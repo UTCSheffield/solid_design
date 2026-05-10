@@ -10,16 +10,13 @@ from solid2.extensions.bosl2 import (
     BOTTOM,
     FRONT,
     LEFT,
-    RIGHT,
-    TOP,
     cyl,
-    linear_extrude,
     linear_sweep,
     squircle,
     text3d,
 )
 
-from geometry import BoundingBox, calculate_shape_bounding_box, center_shape_on_origin
+from geometry import BoundingBox, measure_shape
 
 TParams = TypeVar("TParams")
 
@@ -168,9 +165,7 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
 
     def calculate_text_bounding_box(_self, txt: str, font: str) -> BoundingBox:
         text_shape = text(text=txt, font=font).linear_extrude(1)
-
-        # Calculate the bounding box of the text shape
-        bounds = calculate_shape_bounding_box(text_shape)
+        bounds = measure_shape(text_shape).bounds
         
         return text_shape, bounds
     
@@ -186,7 +181,7 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
         scale_factor = new_text_length / bounds.size[0]
 
         #Make the text again so we have the height ok
-        text_shape = text(text=params.name, font=params.font).translate(*bounds.translation_to_zero())
+        text_shape = text(text=params.name, font=params.font).translate(bounds.translation_to_zero())
         text_shape = text_shape.scale(scale_factor).linear_extrude(params.height)
         
         return text_shape, bounds, scale_factor
@@ -240,29 +235,27 @@ class RoundedFobDesign(LoganKeyFobDesign):
 
 class RoundedBSOL2Design(LoganKeyFobDesign):
     name = "BSOL Fob"
+
     def calculate_text_bounding_box(self, txt: str, font: str):
         probe = text3d(text=txt, font=font, size=10, h=1, anchor=BOTTOM+LEFT+FRONT)
-        bounds = calculate_shape_bounding_box(probe)
-        return bounds
+        return measure_shape(probe).bounds
 
     def build_text_shape(self, params: KeyFobParamsLogan):
         bounds = self.calculate_text_bounding_box(txt=params.name, font=params.font)
         left_text_buffer = params.buffer * 2
         right_text_buffer = params.buffer
         new_text_length = params.length - left_text_buffer - right_text_buffer
-        scale_factor = new_text_length / bounds.size[0]
-
-        text_shape = text3d(
+        measured_text = measure_shape(
+            text3d(
             text=params.name,
             font=params.font,
-            size=10 * scale_factor,
+            size=10,
             h=params.height,
             anchor=LEFT,
         )
-
-        scaled_bounds = calculate_shape_bounding_box(text_shape)
-        text_shape = text_shape.translate(scaled_bounds.translation_to_zero())
-        text_depth = scaled_bounds.size[1]
+        ).resize_to(x=new_text_length)
+        text_shape = measured_text.position(BOTTOM + LEFT + FRONT)
+        text_depth = measured_text.bounds.size[1]
 
         return text_shape, text_depth
 
