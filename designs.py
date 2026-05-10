@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Generic, Literal, TypeVar
 
@@ -26,12 +27,101 @@ class ControlSpec:
     field_name: str
     label: str
     key: str
-    control_type: Literal["text_input", "slider"]
+    control_type: Literal["text_input", "slider", "dropdown"]
     default: Any
     min_value: int | float | None = None
     max_value: int | float | None = None
     step: int | float | None = None
     default_factory: Callable[[Dict[str, Any]], Any] | None = None
+    validation: Callable[[Any], bool | str] | None = None
+
+@st.cache_data(show_spinner=False)
+def available_font_options() -> list[str]:
+    fallback_fonts = [
+        "Liberation Mono",
+        "Liberation Sans",
+        "DejaVu Sans",
+        "Noto Sans",
+        "FreeSans",
+    ]
+    try:
+        result = subprocess.run(
+            ["fc-list", ":", "family"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return fallback_fonts
+
+    font_names: set[str] = set()
+    for line in result.stdout.splitlines():
+        for name in line.split(","):
+            candidate = name.strip()
+            if candidate:
+                font_names.add(candidate)
+
+    if not font_names:
+        return fallback_fonts
+
+    preferred_order = [
+        "Liberation Mono",
+        "Liberation Sans",
+        "Liberation Serif",
+        "DejaVu Sans",
+        "DejaVu Serif",
+        "Noto Sans",
+        "Nimbus Sans",
+        "Nimbus Roman",
+    ]
+    ordered = [name for name in preferred_order if name in font_names]
+    extras = sorted(name for name in font_names if name not in ordered)
+    return ordered + extras
+
+
+@st.cache_data(show_spinner=False)
+def available_font_style_options(font_family: str) -> list[str]:
+    fallback_styles = ["Regular", "Bold", "Italic", "Bold Italic"]
+    if not font_family:
+        return fallback_styles
+
+    try:
+        result = subprocess.run(
+            ["fc-list", f":family={font_family}", "style"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return fallback_styles
+
+    style_names: set[str] = set()
+    for line in result.stdout.splitlines():
+        if "style=" not in line:
+            continue
+        styles_part = line.split("style=", maxsplit=1)[1]
+        for name in styles_part.split(","):
+            candidate = name.strip()
+            if candidate:
+                style_names.add(candidate)
+
+    if not style_names:
+        return fallback_styles
+
+    preferred_order = ["Regular", "Book", "Medium", "Bold", "Italic", "Bold Italic"]
+    ordered = [name for name in preferred_order if name in style_names]
+    extras = sorted(name for name in style_names if name not in ordered)
+    return ordered + extras
+
+
+def compose_font_with_style(font_family: str, font_style: str) -> str:
+    family = font_family.strip()
+    style = font_style.strip()
+    if not style:
+        return family
+    if ":style=" in family:
+        return family
+    return f"{family}:style={style}"
 
 
 def render_controls(control_specs: list[ControlSpec], columns: int = 4) -> dict[str, Any]:
@@ -48,11 +138,30 @@ def render_controls(control_specs: list[ControlSpec], columns: int = 4) -> dict[
                     value=st.session_state.get(spec.key, default_value),
                     key=spec.key,
                 )
+                if spec.validation:
+                    validation_result = spec.validation(value)
+                    if validation_result is not True:
+                        st.error(validation_result)
+                        
             elif spec.control_type == "dropdown":
+                if spec.field_name == "font":
+                    options = available_font_options()
+                elif spec.field_name == "font_style":
+                    selected_font = str(values.get("font", st.session_state.get("font", "")))
+                    options = available_font_style_options(selected_font)
+                else:
+                    options = [str(spec.default)]
+
+                current_value = st.session_state.get(spec.key, default_value)
+                if current_value not in options:
+                    if spec.field_name == "font_style" and "Regular" in options:
+                        current_value = "Regular"
+                    else:
+                        current_value = options[0]
                 value = st.selectbox(
                     spec.label,
-                    options=["Liberation Mono", "Arial", "Times New Roman"],
-                    index=0,
+                    options=options,
+                    index=options.index(current_value),
                     key=spec.key,
                 )
             elif spec.control_type == "slider":
@@ -110,6 +219,7 @@ class KeyFobParamsLogan:
     height: float
     buffer: float
     font: str = "Liberation Mono"
+    font_style: str = "Regular"
 
 
 class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
@@ -123,6 +233,7 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
             key="name",
             control_type="text_input",
             default="Streamlit",
+            validation=lambda x: len(x) > 0 or "Name cannot be empty",
         ),
         ControlSpec(
             field_name="font",
@@ -130,6 +241,13 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
             key="font",
             control_type="dropdown",
             default="Liberation Mono",
+        ),
+        ControlSpec(
+            field_name="font_style",
+            label="Font Style",
+            key="font_style",
+            control_type="dropdown",
+            default="Regular",
         ),
         ControlSpec(
             field_name="length",
@@ -171,8 +289,9 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
     
 
     def build_text_shape(self, params: KeyFobParamsLogan):
+        effective_font = compose_font_with_style(params.font, params.font_style)
         # Create the text shape, extrude it
-        text_shape, bounds = self.calculate_text_bounding_box(txt=params.name, font=params.font)
+        text_shape, bounds = self.calculate_text_bounding_box(txt=params.name, font=effective_font)
 
         # Calculate the new length of the text after accounting for the buffer, then scale the text shape to fit within the desired length
         new_text_length = params.length - (params.buffer * 3) # the end with the hole is a buffer wider
@@ -181,7 +300,7 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
         scale_factor = new_text_length / bounds.size[0]
 
         #Make the text again so we have the height ok
-        text_shape = text(text=params.name, font=params.font).translate(bounds.translation_to_zero())
+        text_shape = text(text=params.name, font=effective_font).translate(bounds.translation_to_zero())
         text_shape = text_shape.scale(scale_factor).linear_extrude(params.height)
         
         return text_shape, bounds, scale_factor
@@ -241,14 +360,15 @@ class RoundedBSOL2Design(LoganKeyFobDesign):
         return measure_shape(probe).bounds
 
     def build_text_shape(self, params: KeyFobParamsLogan):
-        bounds = self.calculate_text_bounding_box(txt=params.name, font=params.font)
+        effective_font = compose_font_with_style(params.font, params.font_style)
+        bounds = self.calculate_text_bounding_box(txt=params.name, font=effective_font)
         left_text_buffer = params.buffer * 2
         right_text_buffer = params.buffer
         new_text_length = params.length - left_text_buffer - right_text_buffer
         measured_text = measure_shape(
             text3d(
             text=params.name,
-            font=params.font,
+            font=effective_font,
             size=10,
             h=params.height,
             anchor=LEFT,
