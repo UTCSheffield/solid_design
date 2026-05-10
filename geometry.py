@@ -90,7 +90,7 @@ def _is_binary_stl(path: Path) -> bool:
 
 def _measure_binary_stl(path: Path) -> BoundingBox:
     mins = [inf, inf, inf]
-    maxs = [-inf, -inf, -inf]
+    maxes = [-inf, -inf, -inf]
 
     with path.open("rb") as stl_file:
         stl_file.read(84)
@@ -104,14 +104,14 @@ def _measure_binary_stl(path: Path) -> BoundingBox:
                 raise ValueError(f"Could not parse binary STL facet in {path}") from exc
 
             for start in (3, 6, 9):
-                _update_bounds(values[start : start + 3], mins, maxs)
+                _update_bounds(values[start : start + 3], mins, maxes)
 
-    return _build_bounds(path, mins, maxs)
+    return _build_bounds(path, mins, maxes)
 
 
 def _measure_ascii_stl(path: Path) -> BoundingBox:
     mins = [inf, inf, inf]
-    maxs = [-inf, -inf, -inf]
+    maxes = [-inf, -inf, -inf]
 
     with path.open("r", encoding="utf-8", errors="ignore") as stl_file:
         for raw_line in stl_file:
@@ -120,26 +120,26 @@ def _measure_ascii_stl(path: Path) -> BoundingBox:
                 continue
 
             _, x_value, y_value, z_value = stripped.split(maxsplit=3)
-            _update_bounds((float(x_value), float(y_value), float(z_value)), mins, maxs)
+            _update_bounds((float(x_value), float(y_value), float(z_value)), mins, maxes)
 
-    return _build_bounds(path, mins, maxs)
+    return _build_bounds(path, mins, maxes)
 
 
 def _update_bounds(
     point: tuple[float, float, float] | list[float],
     mins: list[float],
-    maxs: list[float],
+    maxes: list[float],
 ) -> None:
     for axis, value in enumerate(point):
         mins[axis] = min(mins[axis], value)
-        maxs[axis] = max(maxs[axis], value)
+        maxes[axis] = max(maxes[axis], value)
 
 
-def _build_bounds(path: Path, mins: list[float], maxs: list[float]) -> BoundingBox:
+def _build_bounds(path: Path, mins: list[float], maxes: list[float]) -> BoundingBox:
     if any(value == inf for value in mins):
         raise ValueError(f"No vertices found in STL file: {path}")
 
     return BoundingBox(
         min_corner=tuple(float(value) for value in mins),
-        max_corner=tuple(float(value) for value in maxs),
+        max_corner=tuple(float(value) for value in maxes),
     )

@@ -20,7 +20,7 @@ class MockDesign:
         new_text_length = params.length - left_text_buffer - right_text_buffer
         scale_factor = new_text_length / bounds.size[0]
 
-        textshape = text3d(
+        text_shape = text3d(
             text=params.name,
             font=params.font,
             size=10 * scale_factor,
@@ -28,14 +28,14 @@ class MockDesign:
             anchor=LEFT,
         )
 
-        scaled_bounds = calculate_shape_bounding_box(textshape)
-        textshape = textshape.translate(scaled_bounds.translation_to_zero())
+        scaled_bounds = calculate_shape_bounding_box(text_shape)
+        text_shape = text_shape.translate(scaled_bounds.translation_to_zero())
         text_depth = scaled_bounds.size[1]
 
-        return textshape, text_depth
+        return text_shape, text_depth
 
     def build_shape(self, params: KeyFobParamsLogan):
-        textshape, text_depth = self.build_text_shape(params)
+        text_shape, text_depth = self.build_text_shape(params)
         left_text_buffer = params.buffer * 2
         right_text_buffer = params.buffer
         top_bottom_buffer = params.buffer
@@ -56,7 +56,7 @@ class MockDesign:
         )
 
         text_cutout = (
-            textshape
+            text_shape
             .right(left_text_buffer)
             .fwd(top_bottom_buffer)
             .tag("remove")
