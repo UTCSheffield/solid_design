@@ -62,7 +62,7 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
             control_type="slider",
             min_value=10,
             max_value=100,
-            default=50,
+            default=40,
         ),
         ControlSpec(
             field_name="buffer",
