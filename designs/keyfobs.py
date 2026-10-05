@@ -72,7 +72,7 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
             min_value=1.0,
             max_value=10.0,
             step=0.1,
-            default=2.5,
+            default=3,
         ),
         ControlSpec(
             field_name="height",
@@ -82,7 +82,7 @@ class LoganKeyFobDesign(BaseDesign[KeyFobParamsLogan]):
             min_value=1.0,
             max_value=10.0,
             step=0.1,
-            default=3.0,
+            default=2.0,
         ),
     ]
 
