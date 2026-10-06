@@ -16,8 +16,8 @@ from .svg_keyfob import (
 )
 
 DESIGNS: dict[str, BaseDesign[Any]] = {
-    LoganKeyFobDesign.name: LoganKeyFobDesign(),
     RoundedFobDesign.name: RoundedFobDesign(),
+    LoganKeyFobDesign.name: LoganKeyFobDesign(),
     RoundedBSOL2Design.name: RoundedBSOL2Design(),
     SvgKeyfobDesign.name: SvgKeyfobDesign(),
 }
